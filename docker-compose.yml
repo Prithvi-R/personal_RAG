@@ -1,0 +1,40 @@
+# We are adding a new service for our Neo4j Graph Database
+version: '3.8'
+
+services:
+  # This is our existing PostgreSQL service (we can leave it here)
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: vector_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=vectordb
+      - POSTGRES_HOST_AUTH_METHOD=trust
+
+  # --- ADD THIS NEW SERVICE ---
+  graph_db:
+    image: neo4j:5.20.0
+    container_name: graph_db
+    ports:
+      # The first port is for the Bolt protocol (how our app connects)
+      - "7687:7687"
+      # The second port is for the Neo4j Browser (a web UI)
+      - "7474:7474"
+    volumes:
+      - neo4j_data:/data
+    environment:
+      # Set the authentication method and default password
+      # The username is 'neo4j' by default.
+      - NEO4J_AUTH=neo4j/mypassword
+      # This enables a feature required by some LangChain integrations
+      - NEO4J_PLUGINS=["apoc"]
+      
+volumes:
+  postgres_data:
+  # --- ADD THIS NEW VOLUME ---
+  neo4j_data:

@@ -1,0 +1,19 @@
+Verilog is a hardware description language (HDL) used to model electronic systems. It is commonly used for designing and simulating digital circuits.
+
+The primary building blocks in Verilog are modules. Each module can define inputs, outputs, and internal logic. Modules can also be instantiated inside other modules to build complex systems.
+
+Verilog supports both behavioral and structural modeling. Behavioral modeling uses high-level constructs like always blocks to describe how the circuit should behave, while structural modeling focuses on connecting different components.
+
+The always block is used to model sequential logic. It can be triggered by changes in signals, typically using posedge or negedge to detect clock edges. Combinational logic can also be described using always blocks with appropriate sensitivity lists.
+
+Assign statements are used for continuous assignments in combinational logic. The wire data type is often used for this purpose, while reg is used for variables that are assigned within always blocks.
+
+Verilog includes control structures like if-else, case, and loops such as for and while. These are useful in behavioral modeling to describe complex decision-making logic.
+
+Simulation is performed using testbenches. A testbench is a module that applies stimulus to the design and checks the output. Initial blocks are often used in testbenches to set up initial conditions and sequences.
+
+Verilog supports parameterization, allowing modules to be configured using parameters and `define macros. This increases reusability and flexibility.
+
+Timing and delays can be modeled using # delays or by using clock-driven designs. Verilog also supports tasks and functions to encapsulate reusable code blocks.
+
+The language is standardized as IEEE 1364, and it forms the basis for SystemVerilog, which extends Verilog with more advanced features for design and verification.

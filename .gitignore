@@ -104,6 +104,7 @@ output/
 # uv manage
 pyproject.toml
 uv.lock
+Interview.md
 
 docs/*.pdf
 

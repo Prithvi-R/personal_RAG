@@ -1,5 +1,9 @@
 <!-- docker-compose up -d
 python app.py -->
+<!-- To-Do Improve Documentation -->
+<!-- Add example usage: Provide sample queries, expected outputs, and explanations so users quickly understand how to run and test the system.
+
+Visuals & Diagrams: Add architecture flowcharts, LangGraph schema visualizations, and pipeline diagrams to clarify data and control flow. -->
 # 🧠 AI Research Strategist
 
 An advanced, self-correcting RAG (Retrieval-Augmented Generation) system built with LangGraph. This project orchestrates multiple AI models and a hybrid knowledge base (Vector DB + Knowledge Graph) to function as a robust, automated research agent.

@@ -22,7 +22,7 @@ from langchain_neo4j import Neo4jGraph
 
 # For LLM and Prompt
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate # We need this for the correct pattern
+from langchain_core.prompts import ChatPromptTemplate 
 
 load_dotenv()
 print("Environment variables loaded.")

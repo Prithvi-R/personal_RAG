@@ -441,7 +441,6 @@ def synthesizer_node(state: PlannerState):
     final_answer = dynamic_synthesizer_chain.invoke({"query": query, "collected_data": collected_data_str})
     return {"messages": [("ai", final_answer.content)]}
 
-import re
 
 def post_processing_node(state: PlannerState):
     """

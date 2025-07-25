@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 import glob
-from langchain_core.pydantic_v1 import BaseModel, Field
+# from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 
 # For Document
@@ -14,7 +15,8 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # For Vector Store
-from langchain_chroma import Chroma
+# from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 # For Graph Store
@@ -133,7 +135,13 @@ def embedding_documents():
 
     print(f"\n-> Upserting documents into Vector Store {PERSIST_DIRECTORY}...")
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    Chroma.from_documents(documents=chunks, embedding=embeddings, collection_name=VECTOR_COLLECTION_NAME, persist_directory=PERSIST_DIRECTORY)
+    vector_store = FAISS.from_documents(
+        documents=chunks,
+        embedding=embeddings
+    )
+
+    # Save the FAISS index to disk
+    vector_store.save_local(PERSIST_DIRECTORY)    
     print("---> Vector Store Ingestion Completed.")
 
     print("\n-> Upserting data into Graph Store (Neo4j)...")

@@ -11,7 +11,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import tool
-from langchain_core.pydantic_v1 import BaseModel, Field
+# from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 from langgraph.graph.message import add_messages
 
 # --- LLM and Tool Imports ---
@@ -19,7 +20,7 @@ from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.graphs import Neo4jGraph
 from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_tavily import TavilySearch
 
@@ -64,7 +65,11 @@ print("Reranker Initialized.")
 # --- Tool Definitions ---
 web_search = TavilySearch(max_results=5, name="web_search")
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-vector_store = Chroma(persist_directory="./db_chroma", embedding_function=embeddings, collection_name="ai_documents")
+vector_store = FAISS.load_local(
+    folder_path="./db_chroma",
+    embeddings=embeddings,
+    allow_dangerous_deserialization=True
+)
 base_retriever = vector_store.as_retriever(search_kwargs={"k": 10}) 
 
 

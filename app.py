@@ -3,6 +3,11 @@ from main import app
 import json
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
+from ingest import embedding_documents
+import os
+
+DOCS_FOLDER = "docs"
+os.makedirs(DOCS_FOLDER, exist_ok=True)
 
 st.set_page_config(
     page_title="AI Strategist",
@@ -53,6 +58,55 @@ with st.sidebar:
     use_graph = st.toggle("Use Graph Search", value=True)
     use_web = st.toggle("Use Web Search", value=True)
     st.divider()
+
+    st.subheader("Manage Documents")
+
+    # 1. Upload files
+    uploaded_files = st.file_uploader(
+        "Upload documents (multiple allowed)", 
+        type=["pdf", "txt", "docx"], 
+        accept_multiple_files=True
+    )
+
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            save_path = os.path.join(DOCS_FOLDER, uploaded_file.name)
+            if not os.path.exists(save_path):
+                with open(save_path, "wb") as f:
+                    f.write(uploaded_file.getbuffer())
+        st.success(f"Saved {len(uploaded_files)} new files.")
+
+    # 2. List files currently in docs folder
+    st.write("### Current Documents")
+    files = os.listdir(DOCS_FOLDER)
+    if files:
+        files_to_delete = st.multiselect(
+            "Select files to delete", 
+            options=files
+        )
+        if st.button("Delete Selected Files"):
+            for filename in files_to_delete:
+                file_path = os.path.join(DOCS_FOLDER, filename)
+                try:
+                    os.remove(file_path)
+                    st.success(f"Deleted {filename}")
+                except Exception as e:
+                    st.error(f"Error deleting {filename}: {e}")
+    else:
+        st.info("No files in docs folder.")
+
+    st.divider()
+
+    # 3. Button to run ingestion on all current files
+    if st.button("Embed All Documents"):
+        current_files = [os.path.join(DOCS_FOLDER, f) for f in os.listdir(DOCS_FOLDER)]
+        if current_files:
+            embedding_documents()
+        else:
+            st.warning("No documents found to embed.")
+
+    if st.button("Embed Documents"):
+        embedding_documents()
 
 
 # --- MAIN PAGE ---

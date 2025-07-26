@@ -64,6 +64,8 @@ print("Reranker Initialized.")
 
 # --- Tool Definitions ---
 web_search = TavilySearch(max_results=5, name="web_search")
+
+
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 vector_store = FAISS.load_local(
     folder_path="./db_chroma",

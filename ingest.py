@@ -1,9 +1,9 @@
 import os
 from dotenv import load_dotenv
 import glob
-# from langchain_core.pydantic_v1 import BaseModel, Field
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
+import shutil
 
 # For Document
 from langchain_community.document_loaders import (
@@ -45,13 +45,12 @@ NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 class Node(BaseModel):
     id: str
     type: str
-    properties: Dict[str, Any] = Field(default_factory=dict)
-
+    properties: Dict[str, Any] = {}
 class Relationship(BaseModel):
     source: Node
     target: Node
     type: str
-    properties: Dict[str, Any] = Field(default_factory=dict)
+    properties: Dict[str, Any] = {}
 
 class KnowledgeGraph(BaseModel):
     nodes: List[Node]
@@ -61,44 +60,100 @@ class KnowledgeGraph(BaseModel):
 #  3. THE HIGH-DETAIL GRAPH EXTRACTION PROMPT
 # ==============================================================================
 GRAPH_EXTRACTION_PROMPT = """
-You are an expert in knowledge graph generation from text. Your task is to identify entities and their relationships based on a strict schema.
+You are an expert in extracting important structured knowledge graphs from diverse unstructured documents with relevance entites and their relation.
+
+Your task is to:
+1. Identify important **entities** in the text.
+2. Extract relationships between those entities.
+3. Organize the output in a **JSON format** that matches the KnowledgeGraph schema.
+
+tool_params = {
+    "nodes": nodes_list,
+    "relationships": relationships_list,
+}
 
 **Schema:**
-- **Entities**: Must have an `id` (the entity's name) and a `type`. Permitted types are: `Company`, `Person`, `Technology`, `Product`, `Feature`, `VentureCapital`, `Concept`.
-- **Relationships**: Must have a `source` (entity id), a `target` (entity id), and a `type`. Permitted types are: `FOUNDED_BY`, `WORKS_AT`, `INVESTED_IN`, `COMPETES_WITH`, `USES`, `HAS_PRODUCT`, `HAS_FEATURE`, `BLOCKED_BY`, `PIONEERED`.
+- Each **Entity** must have:
+  - `id`: the name of the entity.
+  - `type`: e.g. Person, Course, Institution, Degree, Subject, Role, Organization, Technology, etc.
+  - `properties`: type dict ,for any useful attributes (e.g., grade, roll number, e-mail, contact, cpi, spi enrollment year, etc.)
+
+- Each **Relationship** must have:
+  - `source`: an entity object.
+  - `target`: another entity object.
+  - `type`: the type of relationship (e.g., ENROLLED_IN, HAS_COURSE, GRADES_IN, WORKS_AT, FOUNDED, STUDIED, etc.)
+  - `properties`: type dict ,for relative info. 
 
 **Instructions:**
 1.  Carefully read the text and identify all entities and relationships that match the schema.
 2.  Construct a valid JSON object adhering to the `KnowledgeGraph` Pydantic schema.
 3.  Do not extract generic entities. Be specific (e.g., "Dr. Aris Thorne" is a good entity, "a founder" is not).
 4.  If an entity or relationship type is not in the schema, do not extract it.
+5. Extract only meaningful entities (e.g., "Prithvi Raj", "Mathematics I", "IIIT Guwahati").
+6. Be specific. Avoid vague entities like "a student" or "the course".
+7. Use only relationships relevant to the document.
+8. Include `properties` if useful details are present (e.g., Grade, Credits, etc.)
+9. If the document doesn't follow a known format, still extract what fits logically into the schema.
 
 **High-Quality Example:**
 Text: "Photonics AI, founded by Dr. Aris Thorne, specializes in Optical Computing. Dr. Thorne previously worked at Google. Their main competitor is QuantumLeap."
 Output (as a JSON object):
 {{
   "nodes": [
-    {{"id": "Photonics AI", "type": "Company"}},
-    {{"id": "Dr. Aris Thorne", "type": "Person"}},
-    {{"id": "Optical Computing", "type": "Technology"}},
-    {{"id": "Google", "type": "Company"}},
-    {{"id": "QuantumLeap", "type": "Company"}}
+    {{"id": "Photonics AI", "type": "Company", "properties": {{}}}},
+    {{"id": "Dr. Aris Thorne", "type": "Person", "properties": {{}}}},
+    {{"id": "Optical Computing", "type": "Technology", "properties": {{}}}},
+    {{"id": "Google", "type": "Company", "properties": {{}}}},
+    {{"id": "QuantumLeap", "type": "Company", "properties": {{}}}}
   ],
   "relationships": [
-     {{"source": {{"id": "Photonics AI", "type": "Company"}}, "target": {{"id": "Dr. Aris Thorne", "type": "Person"}}, "type": "FOUNDED_BY"}},
-    {{"source": {{"id": "Photonics AI", "type": "Company"}}, "target": {{"id": "Optical Computing", "type": "Technology"}}, "type": "USES"}},
-    {{"source": {{"id": "Dr. Aris Thorne", "type": "Person"}}, "target": {{"id": "Google", "type": "Company"}}, "type": "WORKS_AT"}},
-    {{"source": {{"id": "Photonics AI", "type": "Company"}}, "target": {{"id": "QuantumLeap", "type": "Company"}}, "type": "COMPETES_WITH"}}
+    {{
+      "type": "FOUNDED_BY",
+      "source": {{"id": "Photonics AI", "type": "Company", "properties": {{}}}},
+      "target": {{"id": "Dr. Aris Thorne", "type": "Person", "properties": {{}}}}
+    }},
+    {{
+      "type": "USES",
+      "source": {{"id": "Photonics AI", "type": "Company", "properties": {{}}}},
+      "target": {{"id": "Optical Computing", "type": "Technology", "properties": {{}}}}
+    }},
+    {{
+      "type": "WORKS_AT",
+      "source": {{"id": "Dr. Aris Thorne", "type": "Person", "properties": {{}}}},
+      "target": {{"id": "Google", "type": "Company", "properties": {{}}}}
+    }},
+    {{
+      "type": "COMPETES_WITH",
+      "source": {{"id": "Photonics AI", "type": "Company", "properties": {{}}}},
+      "target": {{"id": "QuantumLeap", "type": "Company", "properties": {{}}}}
+    }}
+  ]
+}}
+**Another Example:**
+Text:  
+"Raj (Roll No: 2310321) is pursuing B.Tech in Electronics and Communication Engineering(ECE) at XYZ College. email:xyz@gmail.com male 923943053"
+
+Output (as a JSON object):
+{{
+  "nodes": [
+    {{"id": "raj", "type": "Person", "properties": {{"gender": "Male", "phone": "923943053", "roll_number": "2310321", "program": "B.Tech", "branch": "ECE", "email": "rprithvi939@gmail.com"}}}},
+    {{"id": "IIIT Guwahati", "type": "Institution"}}
+  ],
+  "relationships": [
+    {{"source": {{"id": "raj", "type": "Person"}}, "target": {{"id": "XYZ College", "type": "Institution"}}, "type": "STUDIES_AT"}}
+    {{"source": {{"id": "raj", "type": "Person"}}, "target": {{"id": "ECE", "type": "Course"}}, "type": "STUDIES"}}
   ]
 }}
 """
+escaped_example = GRAPH_EXTRACTION_PROMPT.replace("{", "{{").replace("}", "}}")
 # Create the structured output parser with the KnowledgeGraph model
 extraction_prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", GRAPH_EXTRACTION_PROMPT),
+        ("system", escaped_example),
         ("human", "Now, based on the schema and example, process the following text. Do not add any explanation.\n\nText: {text_chunk}"),
     ]
 )
+
 
 # ==============================================================================
 #  4. DOCUMENT LOADING & PROCESSING LOGIC
@@ -129,7 +184,11 @@ def embedding_documents():
 
     if not documents: print("Could not load any documents successfully. Exiting."); return
 
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=150)
+    if os.path.isdir(PERSIST_DIRECTORY):
+        print(f"Clearing previous vector store memory at '{PERSIST_DIRECTORY}'...")
+        shutil.rmtree(PERSIST_DIRECTORY)
+
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=250)
     chunks = text_splitter.split_documents(documents)
     print(f"-> Loaded and split {len(documents)} document(s) into {len(chunks)} chunks.")
 
@@ -149,7 +208,7 @@ def embedding_documents():
 
     # For a full reset of prev graph, run this manually in the Neo4j Browser---------> MATCH (n) DETACH DELETE n
     #or uncomment the line below to reset everytime
-    # graph.query("MATCH (n) DETACH DELETE n")
+    graph.query("MATCH (n) DETACH DELETE n")
     
     
     llm_for_extraction = ChatGroq(model="llama3-70b-8192", temperature=0).with_structured_output(KnowledgeGraph)
@@ -160,13 +219,37 @@ def embedding_documents():
         if not chunk.page_content.strip(): continue
         print(f"--> Processing chunk {i+1}/{len(chunks)} from source: {chunk.metadata.get('source', 'Unknown')}...")
         try:
-            # We invoke the full chain, which includes the detailed prompt.
             kg_object = llm_chain.invoke({"text_chunk": chunk.page_content})
             
             source_filename = os.path.basename(chunk.metadata.get('source', 'Unknown'))
             for node in kg_object.nodes:
-                node.properties["source_document"] = source_filename
-            
+                # Normalize id and type to lowercase
+                node.id = node.id.lower()
+                node.type = node.type.lower()
+
+                # Normalize property keys and string values to lowercase
+                normalized_props = {}
+                for key, value in node.properties.items():
+                    new_key = key.lower()
+                    new_value = value.lower() if isinstance(value, str) else value
+                    normalized_props[new_key] = new_value
+
+                # Add source document
+                normalized_props["source_document"] = source_filename.lower()
+                node.properties = normalized_props
+
+            # Normalize relationships as well
+            for rel in kg_object.relationships:
+                rel.type = rel.type.lower()
+                rel.source.id = rel.source.id.lower()
+                rel.source.type = rel.source.type.lower()
+                rel.target.id = rel.target.id.lower()
+                rel.target.type = rel.target.type.lower()
+                if rel.properties:
+                    rel.properties = {
+                        k.lower(): v.lower() if isinstance(v, str) else v
+                        for k, v in rel.properties.items()
+                    }
             graph.add_graph_documents([kg_object])
             
             total_nodes += len(kg_object.nodes)
